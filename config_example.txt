@@ -1,0 +1,5 @@
+# Change the name to config.txt and enter your own API credentials and playlist ID
+CLIENT_ID=your_client_id
+CLIENT_SECRET=your_client_secret
+REDIRECT_URI=http://localhost:8888/callback
+TARGET_PLAYLIST_ID=your_target_playlist_id

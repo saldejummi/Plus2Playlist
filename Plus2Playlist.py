@@ -40,6 +40,7 @@ def remove_song_from_liked(song_id):
 
 def main():
     processed_songs = set()  # To keep track of already processed songs
+    print('Scanning liked songs every 60 seconds...')
 
     while True:
         try:

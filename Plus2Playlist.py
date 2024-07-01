@@ -1,6 +1,7 @@
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-import time
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+import requests.exceptions
 
 # Function to read configuration from a text file
 def read_config(filename='config.txt'):
@@ -27,38 +28,35 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=CLIENT_ID,
                                                redirect_uri=REDIRECT_URI,
                                                scope=SCOPE))
 
+# Retry decorator
+@retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=4, max=240), retry=(retry_if_exception_type(requests.exceptions.RequestException)))
 def get_liked_songs():
     results = sp.current_user_saved_tracks(limit=50)
-    liked_songs = results['items']
-    return liked_songs
+    return results['items']
 
-def add_song_to_playlist(song_id, playlist_id):
-    sp.playlist_add_items(playlist_id, [song_id])
+@retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=4, max=240), retry=(retry_if_exception_type(requests.exceptions.RequestException)))
+def add_song_to_playlist(song_id):
+    sp.playlist_add_items(TARGET_PLAYLIST_ID, [song_id])
 
+@retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=4, max=240), retry=(retry_if_exception_type(requests.exceptions.RequestException)))
 def remove_song_from_liked(song_id):
     sp.current_user_saved_tracks_delete([song_id])
 
 def main():
-    processed_songs = set()  # To keep track of already processed songs
     print('Scanning liked songs every 60 seconds...')
-
     while True:
         try:
             liked_songs = get_liked_songs()
-            
             for item in liked_songs:
                 song_id = item['track']['id']
-                if song_id not in processed_songs:
-                    add_song_to_playlist(song_id, TARGET_PLAYLIST_ID)
-                    remove_song_from_liked(song_id)
-                    processed_songs.add(song_id)
-                    print(f"Moved {item['track']['name']} to target playlist and removed from liked songs.")
-            
-            time.sleep(60)  # Check every 60 seconds
-
+                add_song_to_playlist(song_id)
+                remove_song_from_liked(song_id)
+                print(f"Moved {item['track']['name']} to target playlist and removed from liked songs.")
         except KeyboardInterrupt:
             print('KeyboardInterrupt by user in main')
             break
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
 if __name__ == '__main__':
     main()

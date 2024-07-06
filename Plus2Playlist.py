@@ -4,7 +4,6 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 import requests.exceptions
 import os
 import time
-import logging
 
 # Function to read configuration from a text file
 def read_config(filename='config.txt'):
@@ -38,22 +37,16 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=CLIENT_ID,
 # Retry decorator
 @retry(stop=stop_after_attempt(7), wait=wait_exponential(multiplier=1, min=4, max=64), retry=(retry_if_exception_type(requests.exceptions.RequestException)))
 def get_liked_songs():
-    logging.info('Attempting to retrieve liked songs.')
     results = sp.current_user_saved_tracks(limit=50)
-    logging.info('Successfully retrieved liked songs.')
     return results['items']
 
 @retry(stop=stop_after_attempt(7), wait=wait_exponential(multiplier=1, min=4, max=64), retry=(retry_if_exception_type(requests.exceptions.RequestException)))
 def add_song_to_playlist(song_id):
-    logging.info(f'Attempting to add song {song_id} to playlist.')
     sp.playlist_add_items(TARGET_PLAYLIST_ID, [song_id])
-    logging.info(f'Successfully added song {song_id} to playlist.')
 
 @retry(stop=stop_after_attempt(7), wait=wait_exponential(multiplier=1, min=4, max=64), retry=(retry_if_exception_type(requests.exceptions.RequestException)))
 def remove_song_from_liked(song_id):
-    logging.info(f'Attempting to remove song {song_id} from liked songs.')
-    sp.current_user_saved_tracks_delete([song_id])
-    logging.info(f'Successfully removed song {song_id} from liked songs.')    
+    sp.current_user_saved_tracks_delete([song_id])  
 
 def main():
     print('Scanning liked songs every 60 seconds...')
